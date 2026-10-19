@@ -2,7 +2,7 @@
 
 ## Description
 
-Various OS-level settings suitable for hosts used as picoCTF platform components like challenge
+Various OS-level settings suitable for hosts used as CyLab Security Academy platform components like challenge
 servers or webshell toolbox servers.
 
 Like all other roles in this collection, this currently targets contemporary Ubuntu releases only.

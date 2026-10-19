@@ -4,7 +4,7 @@
 
 Installs [Docker Engine](https://docs.docker.com/engine/) on a host and configures various settings
 in order to provide an optimal experience for challenge servers and
-[webshell](https://github.com/picoCTF/webshell) toolbox hosts.
+[webshell](https://github.com/CyLabAcademy/webshell) toolbox hosts.
 
 The Docker configuration changes made by default include:
 
@@ -304,7 +304,7 @@ remapping is toggled on or off.
 
 ### OCI runtime
 
-By default, the [OCI interceptor](https://github.com/picoCTF/oci-interceptor) runtime wrapper is
+By default, the [OCI interceptor](https://github.com/CyLabAcademy/oci-interceptor) runtime wrapper is
 used along with runc. This can be used to work around limitations in Docker's native
 resource-limiting capabilities.
 
@@ -356,7 +356,7 @@ This is [configurable](#firewall-settings), and additional IPs can be blocked if
 
 ## Docker resource reaper
 
-[docker-reaper](https://github.com/picoCTF/oci-interceptor) is integrated as a systemd service. By default, it will run every minute, removing any on-demand cmgr containers and networks which are more than an hour old. This can be disabled or customized via [role variables](#docker-reaper-settings).
+[docker-reaper](https://github.com/CyLabAcademy/oci-interceptor) is integrated as a systemd service. By default, it will run every minute, removing any on-demand cmgr containers and networks which are more than an hour old. This can be disabled or customized via [role variables](#docker-reaper-settings).
 
 ## Role Variables
 

@@ -2,8 +2,7 @@
 
 ## Description
 
-Installs [cork](https://github.com/CyLabAcademy/challenge-orchestrator) on a host, as
-either half of a deployment:
+Installs [cork](https://github.com/CyLabAcademy/cork) on a host, as either half of a deployment:
 
 - an **orchestrator** — `corkd` and its CLI `cork`, serving instances on its workers;
 - a **build plane** — `cork-build` and the artifact server, building every image and
@@ -12,7 +11,7 @@ either half of a deployment:
   rather than setting the flags by hand.
 
 The two halves are the split in
-[issue #18](https://github.com/CyLabAcademy/challenge-orchestrator/issues/18): one build
+[issue #18](https://github.com/CyLabAcademy/cork/issues/18): one build
 plane, one shared registry, one orchestrator per event, and each orchestrator's own
 workers. A one-box deployment is this role's default — `cork_build_plane: local`, where
 `corkd` builds on its own docker daemon and runs what it builds.
@@ -72,7 +71,7 @@ access policy rather than a spelling, so renaming it would mean reissuing the fl
 | cork_version | cork release to install (e.g. `vX.Y.Z`), or `latest`. | `latest` |
 | cork_upgrade | Whether to upgrade an existing installation. | `no` |
 | cork_clean_upgrade | With `cork_upgrade`, remove the database and artifact tarballs first and force a reinstall. **Destructive, and worse on a build plane:** that database records which build id each artifact bundle is named by, and an orchestrator has adopted those ids, so clearing it makes every later hand-over conflict with rows the orchestrator already holds. It also runs `rm -rf` over everything in `cork_artifact_dir`, which the defaults keep clear of the tree — a deployment that points both at one directory loses the checkout along with the bundles. | `no` |
-| cork_github_url | Release repo. | `https://github.com/CyLabAcademy/challenge-orchestrator` |
+| cork_github_url | Release repo. | `https://github.com/CyLabAcademy/cork` |
 
 ### Certificates
 
@@ -130,7 +129,7 @@ because cork ignores all of them.
 | artifact_server_backend | `selfhosted` or `s3`. | `selfhosted` |
 | artifact_server_other_options | Extra command-line options. | unset |
 | artifact_server_extra_environment_vars | Extra environment variables, as a string map. | `{}` |
-| artifact_server_github_url | Release repo. | `https://github.com/picoCTF/cmgr-artifact-server` |
+| artifact_server_github_url | Release repo. | `https://github.com/CyLabAcademy/cmgr-artifact-server` |
 
 ## Usage
 

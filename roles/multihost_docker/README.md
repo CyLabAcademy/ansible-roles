@@ -30,7 +30,7 @@ load.
 
 ## Docker resource reaper
 
-[docker-reaper](https://github.com/picoCTF/docker-reaper) is installed and enabled as a
+[docker-reaper](https://github.com/CyLabAcademy/docker-reaper) is installed and enabled as a
 systemd service + timer.
 
 ## Usage

@@ -21,7 +21,7 @@ What it does **not** do is run anything. Every schema is converged here with its
 demand, which launches no instance, and the instance count a schema really asks for travels
 in the hand-over for the orchestrator to converge to.
 
-See [BUILDER.md](https://github.com/CyLabAcademy/challenge-orchestrator/blob/main/BUILDER.md)
+See [BUILDER.md](https://github.com/CyLabAcademy/cork/blob/main/BUILDER.md)
 for the operator's side of this: which command means what, why a schema may only be served
 by one orchestrator, and what recovering a lost plane database takes.
 
