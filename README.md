@@ -1,7 +1,7 @@
-# picoCTF Ansible Roles
+# CyLab Security Academy Ansible Roles
 
 An [Ansible collection](https://docs.ansible.com/ansible/latest/user_guide/collections_using.html)
-containing various roles for configuring picoCTF platform components and challenge server backends.
+containing various roles for configuring CyLab Security Academy platform components and challenge server backends.
 
 In most cases, all included roles are designed to be idempotent when re-run with the same
 configuration.

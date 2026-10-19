@@ -122,7 +122,7 @@ revisiting for those roles on their own.
 orchestrator**
 
 cork now separates building from serving
-([issue #18](https://github.com/CyLabAcademy/challenge-orchestrator/issues/18)). One
+([issue #18](https://github.com/CyLabAcademy/cork/issues/18)). One
 **build plane** holds the challenge tree, builds every image, pushes it to the shared
 registry and hands the finished builds to the orchestrators; each **orchestrator** serves
 what it is handed, on its own workers, and builds nothing. The new
@@ -311,7 +311,7 @@ defaults and diffing — worth keeping, since two stray blank lines would otherw
 every challenge server in `playbook.yml` for a feature none of them use.
 
 The legacy single-host deployment is untouched for the same reason: it runs the separate
-`cmgr` role, which installs upstream `picoCTF/cmgr` and has no base-pinning to configure.
+`cmgr` role, which installs upstream `CyLabAcademy/cmgr` and has no base-pinning to configure.
 
 Separately, the `cork` role now sets `CMGR_BASE_PINS` to `<CMGR_DIR>/base-pins.json`
 instead of leaving cmgrd's default of `<CMGR_DIR>/.base-pins.json`. The point is the

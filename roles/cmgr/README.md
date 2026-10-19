@@ -2,7 +2,7 @@
 
 ## Description
 
-Installs the [cmgr](https://github.com/picoCTF/cmgr) CTF challenge manager on a host.
+Installs the [cmgr](https://github.com/CyLabAcademy/cmgr) CTF challenge manager on a host.
 Optionally, the `cmgrd` HTTP daemon can be configured to automatically run as a service with
 specified settings.
 
@@ -18,7 +18,7 @@ If enabled, a systemd unit `cmgrd.service` will be added which automatically run
 specified configuration. The `cmgrd` API is exposed over HTTP on port 4200 and does not support
 authentication. It is your responsibility to restrict access to this port.
 
-[cmgr-artifact-server](https://github.com/picoCTF/cmgr-artifact-server) can also be configured as a
+[cmgr-artifact-server](https://github.com/CyLabAcademy/cmgr-artifact-server) can also be configured as a
 systemd service to automatically handle the distribution of build artifacts.
 
 ## Role Variables
@@ -33,7 +33,7 @@ systemd service to automatically handle the distribution of build artifacts.
 | download_example_challenges | Whether to download the provided example challenges when installing cmgr. | `false` |
 | example_challenge_dir | Destination directory for downloaded example challenges. Will be deleted and recreated upon (re)installation. This variable only takes effect during installation and upgrades. | `/challenges/examples/` |
 | wrapper_enabled | Wraps the `cmgr` binary with a script that automatically sets any necessary [environment variables](https://github.com/ArmyCyberInstitute/cmgr#configuration) to match the [`cmgrd` service configuration](#cmgrd-service-configuration). This variable only takes effect during installation and upgrades. | `true` |
-| cmgr_github_url | GitHub repo to download `cmgr` from. Can be used to install a forked `cmgr` version, but the repo must have a semver-compliant tagged release for compatibility with the `version` option. | `https://github.com/picoCTF/cmgr` |
+| cmgr_github_url | GitHub repo to download `cmgr` from. Can be used to install a forked `cmgr` version, but the repo must have a semver-compliant tagged release for compatibility with the `version` option. | `https://github.com/CyLabAcademy/cmgr` |
 
 ### cmgrd service configuration
 
@@ -69,7 +69,7 @@ The `cmgr_artifact_dir` variable defined above is also used for the artifact ser
 | artifact_server_backend | Artifact server backend to use. | `selfhosted` |
 | artifact_server_other_options | Additional command-line options to pass to `cmgr-artifact-server`, e.g. `--backend-opt some=value --log-level debug`. | unset |
 | artifact_server_extra_environment_vars | Extra environment variables to set for the cmgrd-artifact-server service, as a map of string to string. | `{}` |
-| artifact_server_github_url | GitHub repo to download `cmgr-artifact-server` from. Can be used to install a forked `cmgr-artifact-server` version, but the repo must have a semver-compliant tagged release for compatibility with the `artifact_server_version` option. | `https://github.com/picoCTF/cmgr-artifact-server` |
+| artifact_server_github_url | GitHub repo to download `cmgr-artifact-server` from. Can be used to install a forked `cmgr-artifact-server` version, but the repo must have a semver-compliant tagged release for compatibility with the `artifact_server_version` option. | `https://github.com/CyLabAcademy/cmgr-artifact-server` |
 
 ### Multi mode
 

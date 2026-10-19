@@ -205,5 +205,5 @@ itself is overridable through the `docker_builder_*` variables in
 
 Pair it with the `cork` role's `cmgr_base_pins`, which puts the base image digest
 pins at the corpus root so they are committed with the challenges they pin. See
-`BUILDER.md` in the challenge-orchestrator repository for what the builder does
+`BUILDER.md` in the cork repository for what the builder does
 with them.

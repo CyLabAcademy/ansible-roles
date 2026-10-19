@@ -28,7 +28,7 @@ parent_cgroup: "limit_docker.slice"
 parent_cgroup_path: "/etc/systemd/system/{{ parent_cgroup }}"
 
 oci_interceptor_install_path: "/usr/local/bin"
-oci_interceptor_github_url: "https://github.com/picoCTF/oci-interceptor"
+oci_interceptor_github_url: "https://github.com/CyLabAcademy/oci-interceptor"
 oci_interceptor_binary_filename: "oci-interceptor_x86_64-unknown-linux-gnu.tar.gz"
 # dockerd invokes this instead of the binary directly, so the interceptor flags
 # can be applied without daemon.json runtimeArgs. See the template for why.
@@ -46,7 +46,7 @@ crun_binary_filename: "crun-{{ crun_version }}-linux-amd64"
 crun_min_version: "1.30.1"
 
 docker_reaper_install_path: "/usr/local/bin"
-docker_reaper_github_url: "https://github.com/picoCTF/docker-reaper"
+docker_reaper_github_url: "https://github.com/CyLabAcademy/docker-reaper"
 docker_reaper_binary_filename: "docker-reaper-x86_64-unknown-linux-gnu.tar.gz"
 # Under the unit's StateDirectory=docker-reaper, which systemd creates.
 docker_reaper_image_use_record: "/var/lib/docker-reaper/image-use"

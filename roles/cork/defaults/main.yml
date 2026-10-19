@@ -21,7 +21,7 @@ cork_builder_enabled: no
 cork_version: "latest"
 cork_upgrade: no
 cork_clean_upgrade: no
-cork_github_url: "https://github.com/CyLabAcademy/challenge-orchestrator"
+cork_github_url: "https://github.com/CyLabAcademy/cork"
 
 # Certificates. cork holds the CN=cmgr identity in two trust domains and needs
 # whichever ones its host actually acts in: the docker-ca set to drive the
@@ -137,7 +137,7 @@ artifact_server_enabled: "{{ cork_build_plane != 'external' }}"
 artifact_server_backend: "selfhosted"
 artifact_server_other_options: ""
 artifact_server_extra_environment_vars: {}
-artifact_server_github_url: "https://github.com/picoCTF/cmgr-artifact-server"
+artifact_server_github_url: "https://github.com/CyLabAcademy/cmgr-artifact-server"
 # v3.0.0 is a floor, not a preference. A build plane writes one subdirectory per
 # destination, and only v3 treats those as namespaces (it looks for the
 # .cork-artifact-namespace marker cork-build leaves in each). v2 ignores every
