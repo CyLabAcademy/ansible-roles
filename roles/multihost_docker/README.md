@@ -54,11 +54,23 @@ The image is a moving tag. A daily timer pulls it and restarts the proxy when th
 the container counterpart of unattended upgrades; a proxy someone stopped is left stopped.
 
 Requests are logged twice. The full log (client, host, request line, status) stays in the
-container's log, `docker logs challenge-proxy`. A compact JSON line per proxied request (time,
-client, port, method, status, bytes, seconds, but no path, query or headers) goes to
-`/var/log/challenge-proxy/access.log`, rotated daily with a week kept, for a log shipper such as
-the CloudWatch agent. Requests to the catch-all server, mostly scanners, appear only in the
-container's log.
+container's log, `docker logs challenge-proxy`. Compact JSON lines (time, client, port, method,
+status, bytes, seconds, but no path, query or headers) go to
+`/var/log/challenge-proxy/access.log` for a log shipper such as the CloudWatch agent. That one is
+sampled so a flood cannot flood what is shipped: after a burst of 10, a client gets about one
+line a second per port, however fast it sends. It shows who reached which port and when, not how
+many times. A timer checks it hourly, rotating it daily or at 100 MB, with a week kept. Requests
+to the catch-all server, mostly scanners, appear only in the container's log.
+
+Against abuse, the proxy relies on resource limits rather than rate limits, since hammering a
+challenge is often how it is solved:
+- **Container ceilings:** its memory, CPU and process count are capped within the container
+  slice, so a flood takes down the proxy, which systemd restarts, and not the challenges sharing
+  that slice.
+- **Timeouts:** client timeouts are shorter than nginx's defaults, and timed-out connections are
+  reset.
+- **Connection cap:** each client address may hold a generous number of connections. Over the
+  cap, it gets a 429.
 
 ## Usage
 
@@ -635,6 +647,9 @@ fstab line by hand if you actually want it gone.
 | `challenge_proxy_update_schedule` | `OnCalendar` for the update check. Each worker adds up to an hour of random delay. | `*-*-* 23:30:00 UTC` |
 | `challenge_proxy_port_regex` | Ports the proxy forwards to. Must cover cork's `CORK_PORTS`; five digits keeps everything below 10000 (sshd, the Docker API, cork-telemetry) out of reach. | `[1-4]\d{4}` |
 | `challenge_proxy_expected_ports` | cork's port range (`low-high`). When set, the play fails unless `challenge_proxy_port_regex` covers it. | `null` |
+| `challenge_proxy_connections_per_client` | Connections one client address may hold at once; past it, a 429. Generous, since a whole school can share one address. | `300` |
+| `challenge_proxy_memory` | The proxy container's memory ceiling, swap included. Over it, the proxy is killed and systemd restarts it. | `512m` |
+| `challenge_proxy_cpus` | The proxy container's CPU ceiling, in CPUs. | `0.5` |
 
 ## Baking a worker image
 

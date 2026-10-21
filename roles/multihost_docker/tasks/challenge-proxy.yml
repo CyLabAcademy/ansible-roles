@@ -51,10 +51,10 @@
         group: root
         mode: "0750"
 
-    - name: Ensure the challenge proxy log is rotated
+    - name: Ensure the challenge proxy log rotation config is present
       ansible.builtin.template:
         src: challenge_proxy.logrotate.j2
-        dest: /etc/logrotate.d/challenge-proxy
+        dest: "{{ challenge_proxy_conf_dir }}/logrotate.conf"
         mode: "0644"
 
     # nginx -t opens the log files too, so the log directory is mounted for it.
@@ -114,17 +114,34 @@
         daemon_reload: yes
       when: not (ansible_check_mode and challenge_proxy_update_units is changed)
 
+    - name: Ensure the challenge proxy log rotation units are present
+      ansible.builtin.template:
+        src: "challenge_proxy_logrotate.{{ item }}.j2"
+        dest: "{{ systemd_unit_dir }}/{{ challenge_proxy_logrotate_unit }}.{{ item }}"
+        mode: "0644"
+      loop: [service, timer]
+      register: challenge_proxy_logrotate_units
+
+    - name: Ensure the challenge proxy log rotation timer is enabled and running
+      ansible.builtin.systemd:
+        name: "{{ challenge_proxy_logrotate_unit }}.timer"
+        enabled: yes
+        state: "{{ 'restarted' if challenge_proxy_logrotate_units is changed else 'started' }}"
+        daemon_reload: yes
+      when: not (ansible_check_mode and challenge_proxy_logrotate_units is changed)
+
 # Turning it off removes it, rather than leaving a public listener nobody configured.
 - name: Remove the challenge proxy
   when: not (challenge_proxy_enabled | bool)
   block:
-    - name: Ensure the challenge proxy and its update timer are stopped and disabled
+    - name: Ensure the challenge proxy and its timers are stopped and disabled
       ansible.builtin.systemd:
         name: "{{ item }}"
         state: stopped
         enabled: no
       loop:
         - "{{ challenge_proxy_update_unit }}.timer"
+        - "{{ challenge_proxy_logrotate_unit }}.timer"
         - "{{ challenge_proxy_service }}"
       # Absent on a host that never ran it.
       failed_when: false
@@ -137,9 +154,11 @@
       loop:
         - "{{ systemd_unit_dir }}/{{ challenge_proxy_update_unit }}.timer"
         - "{{ systemd_unit_dir }}/{{ challenge_proxy_update_unit }}.service"
+        - "{{ systemd_unit_dir }}/{{ challenge_proxy_logrotate_unit }}.timer"
+        - "{{ systemd_unit_dir }}/{{ challenge_proxy_logrotate_unit }}.service"
         - "{{ systemd_unit_dir }}/{{ challenge_proxy_service }}"
         - "{{ challenge_proxy_update_script }}"
         - "{{ challenge_proxy_conf_dir }}"
-        - /etc/logrotate.d/challenge-proxy
+        - /var/lib/logrotate/challenge-proxy.status
       notify:
         - Reload systemd config

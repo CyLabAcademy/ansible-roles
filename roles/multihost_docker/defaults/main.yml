@@ -154,6 +154,13 @@ challenge_proxy_update_schedule: "*-*-* 23:30:00 UTC"
 challenge_proxy_port_regex: '[1-4]\d{4}'
 # The orchestrator's cork_ports ("low-high"). When set, the play fails unless the regex covers it.
 challenge_proxy_expected_ports: null
+# Connections one client address may hold at once. Generous, since a whole school can share
+# one address: it stops one script, not a determined attacker.
+challenge_proxy_connections_per_client: 300
+# The proxy's own ceiling inside the container slice, so a flood against it takes down the
+# proxy (systemd restarts it) rather than the challenges sharing that slice.
+challenge_proxy_memory: "512m"
+challenge_proxy_cpus: "0.5"
 
 # Aggregate container resource ceilings (limit_docker.slice).
 #

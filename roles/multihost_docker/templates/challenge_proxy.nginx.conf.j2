@@ -21,6 +21,28 @@ http {
     # would hide the challenge's own: some challenges are about theirs.
     add_header X-Robots-Tag "noindex, nofollow" always;
 
+    # Slow clients lose their connection sooner than nginx's 60-75s defaults, so holding
+    # connections open costs more, and a timed-out one is reset rather than left to linger.
+    client_header_timeout 15s;
+    client_body_timeout 30s;
+    send_timeout 30s;
+    keepalive_timeout 15s;
+    reset_timedout_connection on;
+
+    limit_conn_zone $binary_remote_addr zone=per_client:10m;
+    limit_conn per_client {{ challenge_proxy_connections_per_client }};
+    limit_conn_status 429;
+
+    # Limits the shipped log, not the requests: in dry-run mode nothing is delayed or
+    # refused, since hammering a challenge is often how it is solved. Past a burst, a client
+    # gets about one shipped line a second per port, however fast it sends.
+    limit_req_zone $binary_remote_addr$port zone=shipped_log:10m rate=1r/s;
+    limit_req_log_level info;
+    map $limit_req_status $shipped_log_sample {
+        PASSED  1;
+        default 0;
+    }
+
     # The Host names the port, which is what ties a request to an instance.
     log_format proxy '$remote_addr [$time_local] "$host" "$request" $status $body_bytes_sent $request_time';
     # For shipping off the box: who reached which port, when, and how it went. No path,
@@ -42,8 +64,10 @@ http {
     server {
         listen 80;
         server_name "~^(?<port>{{ challenge_proxy_port_regex }})\.";
+        limit_req zone=shipped_log burst=10 nodelay;
+        limit_req_dry_run on;
         access_log /dev/stdout proxy;
-        access_log {{ challenge_proxy_log_dir }}/access.log shipped;
+        access_log {{ challenge_proxy_log_dir }}/access.log shipped if=$shipped_log_sample;
 
         # Challenges are the client's to probe: pass every request header through as sent,
         # add none, and accept any body size.
@@ -65,11 +89,17 @@ http {
             proxy_read_timeout 1h;
             proxy_send_timeout 1h;
             error_page 502 504 @no_instance;
+            error_page 429 @too_many_connections;
         }
 
         location @no_instance {
             default_type text/plain;
             return 502 "The challenge instance on this port did not answer. It may have expired: launch it again from the challenge page.\n";
+        }
+
+        location @too_many_connections {
+            default_type text/plain;
+            return 429 "Too many open connections from your network to this proxy. Close some, or wait a moment, and try again.\n";
         }
     }
 }

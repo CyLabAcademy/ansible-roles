@@ -17,6 +17,8 @@ ExecStart=/usr/bin/docker run --rm --name {{ challenge_proxy_container }} --atta
     --read-only --tmpfs /tmp --tmpfs /var/cache/nginx \
     --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add NET_BIND_SERVICE \
     --security-opt no-new-privileges \
+    --memory {{ challenge_proxy_memory }} --memory-swap {{ challenge_proxy_memory }} \
+    --cpus {{ challenge_proxy_cpus }} --pids-limit 64 \
     --volume {{ challenge_proxy_conf_dir }}:{{ challenge_proxy_conf_dir }}:ro \
     --volume {{ challenge_proxy_log_dir }}:{{ challenge_proxy_log_dir }} \
     --entrypoint /usr/sbin/nginx \
