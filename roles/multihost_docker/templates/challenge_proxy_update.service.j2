@@ -2,7 +2,9 @@
 
 [Unit]
 Description=Update the challenge proxy if its image tag has moved
-Requires=docker.service
+# Requisite, not Requires: a run while Docker is stopped on purpose, as during an image
+# bake, fails instead of starting it again.
+Requisite=docker.service
 After=docker.service
 
 [Service]

@@ -41,11 +41,15 @@ hostname suffix, so it holds nothing per-host and works from a baked image; a wi
 record (`*.<worker>`) pointing at the worker is what makes those names resolve, and port 80
 must be open to it.
 
-Request headers reach the challenge as sent and none are added, since many web challenges are
-about headers. The challenge sees the connection come from the worker's own address, not the
-player's. Responses gain one header, `X-Robots-Tag: noindex, nofollow`, which keeps challenges
-out of search results; a `robots.txt` would have hidden the challenge's own, which some
-challenges are about.
+Headers pass through as sent, in both directions, since many web challenges are about headers.
+None are added to requests. The exceptions are the hop-by-hop request headers nginx manages
+itself: `Connection` and `Upgrade` are set for the connection to the challenge, and `Keep-Alive`,
+`TE` and `Expect` are dropped. Responses keep the challenge's own `Server`, `Date` and
+`X-Accel-*` headers, which nginx would otherwise hide or act on. They gain one header,
+`X-Robots-Tag: noindex, nofollow`, which keeps challenges out of search results; a `robots.txt`
+would have hidden the challenge's own, which some challenges are about. Headers up to 32 KB fit
+either way. The challenge sees the connection come from the worker's own address, not the
+player's.
 
 A few challenges cannot work through any proxy and stay on their direct port: request smuggling
 and raw HTTP, and path traversal in the URL path itself, which nginx rejects with 400 first.
@@ -59,7 +63,8 @@ status, bytes, seconds, but no path, query or headers) go to
 `/var/log/challenge-proxy/access.log` for a log shipper such as the CloudWatch agent. That one is
 sampled so a flood cannot flood what is shipped: after a burst of 10, a client gets about one
 line a second per port, however fast it sends. It shows who reached which port and when, not how
-many times. A timer checks it hourly, rotating it daily or at 100 MB, with a week kept. Requests
+many times. A timer checks it hourly, rotating it daily or at 100 MB and keeping seven rotations:
+a week of history normally, but as little as seven hours under a sustained flood. Requests
 to the catch-all server, mostly scanners, appear only in the container's log.
 
 Against abuse, the proxy relies on resource limits rather than rate limits, since hammering a
@@ -649,7 +654,7 @@ fstab line by hand if you actually want it gone.
 | `challenge_proxy_expected_ports` | cork's port range (`low-high`). When set, the play fails unless `challenge_proxy_port_regex` covers it. | `null` |
 | `challenge_proxy_connections_per_client` | Connections one client address may hold at once; past it, a 429. Generous, since a whole school can share one address. | `300` |
 | `challenge_proxy_memory` | The proxy container's memory ceiling, swap included. Over it, the proxy is killed and systemd restarts it. | `512m` |
-| `challenge_proxy_cpus` | The proxy container's CPU ceiling, in CPUs. | `0.5` |
+| `challenge_proxy_cpus` | The proxy container's CPU ceiling, in CPUs. nginx runs one worker per CPU of it, rounded up, rather than one per host CPU. | `0.5` |
 
 ## Baking a worker image
 
@@ -689,12 +694,16 @@ filesystem nothing is writing to:
 ```sh
 ROOT=$(docker info --format '{{.DockerRootDir}}')   # NOT storage_mount_point, see below
 : "${ROOT:?docker info failed - do this before stopping the daemon}"
+# Stopped, not disabled, so clones start them. Running, the proxy's unit recreates its
+# container within seconds of the rm below.
+sudo systemctl stop challenge-proxy-update.timer challenge-proxy-logrotate.timer challenge-proxy
 docker ps -aq | xargs -r docker rm -fv              # -v, or their anonymous volumes stay
 docker volume prune -af                             # -a, or named volumes stay
 docker network prune -f
 sudo systemctl stop docker docker.socket
 sudo rm -f "$ROOT/engine-id"                        # else every clone reports one daemon ID
 sudo rm -f "$ROOT/network/files/local-kv.db"        # libnetwork's IPAM allocations
+sudo rm -f /var/log/challenge-proxy/* /var/lib/logrotate/challenge-proxy.status  # the base's own traffic
 ```
 
 Take the root from `docker info` rather than assuming `/mnt/docker-data`: with

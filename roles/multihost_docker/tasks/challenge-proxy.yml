@@ -11,10 +11,10 @@
       vars:
         ports: "{{ challenge_proxy_expected_ports.split('-') | map('int') | list }}"
         pattern: "^({{ challenge_proxy_port_regex }})$"
+      # Every port, not just the ends, so a regex with a gap in the middle fails too.
       ansible.builtin.assert:
         that:
-          - ports[0] | string is match(pattern)
-          - ports[1] | string is match(pattern)
+          - range(ports[0], ports[1] + 1) | map('string') | reject('match', pattern) | list | length == 0
           - not ((ports[0] - 1) | string is match(pattern))
         fail_msg: >-
           challenge_proxy_port_regex '{{ challenge_proxy_port_regex }}' does not cover cork's

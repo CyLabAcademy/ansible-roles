@@ -85,12 +85,6 @@
     apply:
       become: yes
 
-# Not gated on challenge_proxy_enabled: turning it off has to remove it.
-- ansible.builtin.include_tasks: challenge-proxy.yml
-  args:
-    apply:
-      become: yes
-
 - ansible.builtin.meta: flush_handlers
 
 - name: Ensure Docker service is active
@@ -100,6 +94,14 @@
   become: yes
   register: docker_service
   until: docker_service.status.ActiveState == "active"
+
+# After dockerd has restarted on its final config: before it, the image would land in the
+# store the restart moves away from. Not gated on challenge_proxy_enabled: turning it off
+# has to remove it.
+- ansible.builtin.include_tasks: challenge-proxy.yml
+  args:
+    apply:
+      become: yes
 
 - name: Ensure ufw service is active
   ansible.builtin.service:

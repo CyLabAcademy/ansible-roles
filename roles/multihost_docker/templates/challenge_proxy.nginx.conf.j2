@@ -3,16 +3,17 @@
 daemon off;
 # The container shares the host's uids, where the image's nginx uid is a system account.
 user nobody nobody;
-worker_processes auto;
+# From the container's CPU ceiling, not the host's CPU count, which auto would use.
+worker_processes {{ [1, challenge_proxy_cpus | float | round(0, 'ceil') | int] | max }};
 # Two descriptors per proxied connection.
-worker_rlimit_nofile 10240;
+worker_rlimit_nofile 20480;
 pid /tmp/nginx.pid;
 # Beside the access log in the container's rotated log: a request to an expired instance
 # is an error, and the journal is shipped off the box.
 error_log /dev/stdout warn;
 
 events {
-    worker_connections 4096;
+    worker_connections 8192;
 }
 
 http {
@@ -69,11 +70,13 @@ http {
         access_log /dev/stdout proxy;
         access_log {{ challenge_proxy_log_dir }}/access.log shipped if=$shipped_log_sample;
 
-        # Challenges are the client's to probe: pass every request header through as sent,
-        # add none, and accept any body size.
+        # Challenges are the client's to probe: request headers pass as sent, apart from the
+        # hop-by-hop ones nginx manages (Connection, Upgrade, Keep-Alive, TE, Expect), and
+        # any body size goes. Header buffers fit oversized cookies and tokens.
         underscores_in_headers on;
         ignore_invalid_headers off;
         client_max_body_size 0;
+        large_client_header_buffers 4 32k;
 
         location / {
             # The worker address the request arrived on: never loopback, and nothing
@@ -85,6 +88,20 @@ http {
             proxy_set_header Connection $connection_upgrade;
             proxy_buffering off;
             proxy_request_buffering off;
+            proxy_buffer_size 32k;
+            # Only to satisfy nginx's buffer arithmetic: with buffering off they are not filled.
+            proxy_buffers 4 32k;
+            # The challenge's response headers, as it sent them. nginx would otherwise hide
+            # Server, Date and X-Accel-*, and act on X-Accel-* itself.
+            proxy_pass_header Server;
+            proxy_pass_header Date;
+            proxy_pass_header X-Pad;
+            proxy_pass_header X-Accel-Redirect;
+            proxy_pass_header X-Accel-Expires;
+            proxy_pass_header X-Accel-Limit-Rate;
+            proxy_pass_header X-Accel-Buffering;
+            proxy_pass_header X-Accel-Charset;
+            proxy_ignore_headers X-Accel-Redirect X-Accel-Expires X-Accel-Limit-Rate X-Accel-Buffering X-Accel-Charset;
             proxy_connect_timeout 5s;
             proxy_read_timeout 1h;
             proxy_send_timeout 1h;
