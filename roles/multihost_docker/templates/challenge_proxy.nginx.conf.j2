@@ -1,0 +1,66 @@
+# {{ ansible_managed }}
+
+daemon off;
+# The container shares the host's uids, where the image's nginx uid is a system account.
+user nobody nobody;
+worker_processes auto;
+# Two descriptors per proxied connection.
+worker_rlimit_nofile 10240;
+pid /tmp/nginx.pid;
+# Beside the access log in the container's rotated log: a request to an expired instance
+# is an error, and the journal is shipped off the box.
+error_log /dev/stdout warn;
+
+events {
+    worker_connections 4096;
+}
+
+http {
+    server_tokens off;
+
+    # The Host names the port, which is what ties a request to an instance.
+    log_format proxy '$remote_addr [$time_local] "$host" "$request" $status $body_bytes_sent $request_time';
+    access_log /dev/stdout proxy;
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    server {
+        listen 80 default_server;
+        return 404;
+    }
+
+    server {
+        listen 80;
+        server_name "~^(?<port>{{ challenge_proxy_port_regex }})\.";
+
+        # Challenges are the client's to probe: pass every header through as sent, add
+        # none, and accept any body size.
+        underscores_in_headers on;
+        ignore_invalid_headers off;
+        client_max_body_size 0;
+
+        location / {
+            # The worker address the request arrived on: never loopback, and nothing
+            # host-specific in this file, so a baked image works on any instance.
+            proxy_pass http://$server_addr:$port;
+            proxy_http_version 1.1;
+            proxy_set_header Host $http_host;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 1h;
+            proxy_send_timeout 1h;
+            error_page 502 504 @no_instance;
+        }
+
+        location @no_instance {
+            default_type text/plain;
+            return 502 "The challenge instance on this port did not answer. It may have expired: launch it again from the challenge page.\n";
+        }
+    }
+}

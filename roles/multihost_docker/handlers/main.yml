@@ -38,3 +38,16 @@
     name: telemetry.service
     state: restarted
   become: yes
+
+- name: Restart challenge proxy
+  ansible.builtin.systemd:
+    name: "{{ challenge_proxy_service }}"
+    state: restarted
+  become: yes
+
+# Starts the unit if it is not running, so a config change cannot fail on a stopped proxy.
+- name: Reload challenge proxy
+  ansible.builtin.systemd:
+    name: "{{ challenge_proxy_service }}"
+    state: reloaded
+  become: yes

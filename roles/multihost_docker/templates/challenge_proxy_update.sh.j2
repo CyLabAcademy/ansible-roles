@@ -1,0 +1,15 @@
+#!/bin/sh
+# {{ ansible_managed }}
+#
+# Pulls the challenge proxy's tag and restarts the proxy if the tag now names a different
+# image. A proxy someone stopped is left stopped; the old image is left to docker-reaper.
+set -eu
+
+docker pull --quiet {{ challenge_proxy_image }} >/dev/null
+latest=$(docker image inspect --format '{% raw %}{{.Id}}{% endraw %}' {{ challenge_proxy_image }})
+running=$(docker container inspect --format '{% raw %}{{.Image}}{% endraw %}' {{ challenge_proxy_container }} 2>/dev/null || true)
+
+if systemctl is-active --quiet {{ challenge_proxy_service }} && [ "$latest" != "$running" ]; then
+    echo "challenge proxy: restarting on ${latest} (was ${running:-not running})"
+    systemctl restart {{ challenge_proxy_service }}
+fi

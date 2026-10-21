@@ -1,0 +1,30 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=Challenge proxy (nginx serving <port>.<host> from that challenge port)
+Requires=docker.service
+After=docker.service
+StartLimitIntervalSec=0
+
+[Service]
+ExecStartPre=-/usr/bin/docker rm --force {{ challenge_proxy_container }}
+# Host network, so published ports are reached the way outside traffic reaches them.
+# userns-remap cannot share the host network, so this one container opts out of it and
+# keeps only the capabilities nginx's master needs. nginx logs to the container's rotated
+# log (docker logs); stderr, attached here, carries only failures to start.
+ExecStart=/usr/bin/docker run --rm --name {{ challenge_proxy_container }} --attach stderr \
+    --network host --userns host \
+    --read-only --tmpfs /tmp --tmpfs /var/cache/nginx \
+    --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add NET_BIND_SERVICE \
+    --security-opt no-new-privileges \
+    --volume {{ challenge_proxy_conf_dir }}:{{ challenge_proxy_conf_dir }}:ro \
+    --entrypoint /usr/sbin/nginx \
+    {{ challenge_proxy_image }} -c {{ challenge_proxy_conf_dir }}/nginx.conf
+# A container not up yet reads the current files when it starts.
+ExecReload=-/usr/bin/docker kill --signal HUP {{ challenge_proxy_container }}
+ExecStop=/usr/bin/docker stop {{ challenge_proxy_container }}
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

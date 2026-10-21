@@ -142,6 +142,19 @@ cork_telemetry_version: "latest"
 cork_telemetry_upgrade: no
 cork_telemetry_github_url: "https://github.com/CyLabAcademy/cork-telemetry"
 
+# nginx answering <port>.<any host> on 80 from that challenge port
+# on this worker, for networks that only allow web ports.
+challenge_proxy_enabled: yes
+# A moving tag on purpose: a daily timer pulls it and restarts the proxy when it changes.
+challenge_proxy_image: "nginx:stable-alpine-slim"
+# systemd OnCalendar for that check; each worker adds up to an hour of random delay.
+challenge_proxy_update_schedule: "*-*-* 23:30:00 UTC"
+# Ports it forwards. Must cover the orchestrator's cork_ports; five digits keeps every host
+# service below 10000 out of reach.
+challenge_proxy_port_regex: '[1-4]\d{4}'
+# The orchestrator's cork_ports ("low-high"). When set, the play fails unless the regex covers it.
+challenge_proxy_expected_ports: null
+
 # Aggregate container resource ceilings (limit_docker.slice).
 #
 # Memory is sized as "total RAM minus what the host needs", not as a percentage

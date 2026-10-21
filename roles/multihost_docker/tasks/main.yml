@@ -85,6 +85,12 @@
     apply:
       become: yes
 
+# Not gated on challenge_proxy_enabled: turning it off has to remove it.
+- ansible.builtin.include_tasks: challenge-proxy.yml
+  args:
+    apply:
+      become: yes
+
 - ansible.builtin.meta: flush_handlers
 
 - name: Ensure Docker service is active

@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=Update the challenge proxy if its image tag has moved
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart={{ challenge_proxy_update_script }}
