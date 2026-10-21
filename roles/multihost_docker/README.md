@@ -64,8 +64,10 @@ status, bytes, seconds, but no path, query or headers) go to
 sampled so a flood cannot flood what is shipped: after a burst of 10, a client gets about one
 line a second per port, however fast it sends. It shows who reached which port and when, not how
 many times. A timer checks it hourly, rotating it daily or at 100 MB and keeping seven rotations:
-a week of history normally, but as little as seven hours under a sustained flood. Requests
-to the catch-all server, mostly scanners, appear only in the container's log.
+a week of history normally, but as little as seven hours under a sustained flood.
+
+A request not addressed to `<port>.<host>`, such as the bare IP or a worker's own name, mostly
+from scanners, is closed without a reply (nginx's 444) and logged nowhere.
 
 Against abuse, the proxy relies on resource limits rather than rate limits, since hammering a
 challenge is often how it is solved:
