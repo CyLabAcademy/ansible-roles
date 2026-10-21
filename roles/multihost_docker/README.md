@@ -41,10 +41,14 @@ hostname suffix, so it holds nothing per-host and works from a baked image; a wi
 record (`*.<worker>`) pointing at the worker is what makes those names resolve, and port 80
 must be open to it.
 
-Headers pass through as sent and none are added, since many web challenges are about headers.
-The challenge sees the connection come from the worker's own address, not the player's. A few
-challenges cannot work through any proxy and stay on their direct port: request smuggling and
-raw HTTP, and path traversal in the URL path itself, which nginx rejects with 400 first.
+Request headers reach the challenge as sent and none are added, since many web challenges are
+about headers. The challenge sees the connection come from the worker's own address, not the
+player's. Responses gain one header, `X-Robots-Tag: noindex, nofollow`, which keeps challenges
+out of search results; a `robots.txt` would have hidden the challenge's own, which some
+challenges are about.
+
+A few challenges cannot work through any proxy and stay on their direct port: request smuggling
+and raw HTTP, and path traversal in the URL path itself, which nginx rejects with 400 first.
 
 The image is a moving tag. A daily timer pulls it and restarts the proxy when the tag has moved,
 the container counterpart of unattended upgrades; a proxy someone stopped is left stopped.

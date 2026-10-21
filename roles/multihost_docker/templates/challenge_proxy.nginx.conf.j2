@@ -17,6 +17,9 @@ events {
 
 http {
     server_tokens off;
+    # Keeps challenges out of search results. A header rather than a robots.txt, which
+    # would hide the challenge's own: some challenges are about theirs.
+    add_header X-Robots-Tag "noindex, nofollow" always;
 
     # The Host names the port, which is what ties a request to an instance.
     log_format proxy '$remote_addr [$time_local] "$host" "$request" $status $body_bytes_sent $request_time';
