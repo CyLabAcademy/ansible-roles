@@ -26,75 +26,79 @@
   ansible.builtin.set_fact:
     installation_required: "{{ (clean_upgrade | bool) or (not cmgr_binary.stat.exists) or ((upgrade | bool) and version != 'latest' and cmgr_version_output.stdout != version) or ((upgrade | bool) and version == 'latest' and cmgr_version_output.stdout != latest_version_response.url.split('/tag/')[1]) }}"
 
-- name: Create temporary directory for downloads
-  ansible.builtin.tempfile:
-    state: directory
-  register: download_dir
-  when: installation_required
+# tempfile does not run under --check, so neither can anything that downloads into it.
+- name: Report the cmgr release that would be installed
+  ansible.builtin.debug:
+    msg: "Would install cmgr {{ version }}"
+  changed_when: true
+  when: installation_required | bool and ansible_check_mode
 
-- name: Download cmgr binaries
-  ansible.builtin.get_url:
-    dest: "{{ download_dir.path }}"
-    url: "{{ cmgr_github_url }}/releases/download/{{ latest_version_response.url.split('/tag/')[1] if version == 'latest' else version }}/{{ cmgr_binaries_filename }}"
-    mode: "0644"
-  when: installation_required
+- name: Install cmgr
+  when: installation_required | bool and not ansible_check_mode
+  block:
+    - name: Create temporary directory for downloads
+      ansible.builtin.tempfile:
+        state: directory
+      register: download_dir
 
-- name: Unpack cmgr binaries
-  ansible.builtin.unarchive:
-    dest: "{{ download_dir.path }}"
-    remote_src: yes
-    src: "{{ download_dir.path }}/{{ cmgr_binaries_filename }}"
-  when: installation_required
+    - name: Download cmgr binaries
+      ansible.builtin.get_url:
+        dest: "{{ download_dir.path }}"
+        url: "{{ cmgr_github_url }}/releases/download/{{ latest_version_response.url.split('/tag/')[1] if version == 'latest' else version }}/{{ cmgr_binaries_filename }}"
+        mode: "0644"
 
-- name: Copy cmgr binary to install location
-  ansible.builtin.copy:
-    src: "{{ download_dir.path }}/cmgr"
-    dest: "{{ install_location }}/cmgr"
-    mode: "0755"
-    remote_src: yes
-  when: installation_required
+    - name: Unpack cmgr binaries
+      ansible.builtin.unarchive:
+        dest: "{{ download_dir.path }}"
+        remote_src: yes
+        src: "{{ download_dir.path }}/{{ cmgr_binaries_filename }}"
 
-- name: Copy cmgrd binary to install location
-  ansible.builtin.copy:
-    src: "{{ download_dir.path }}/cmgrd"
-    dest: "{{ install_location }}/cmgrd"
-    mode: "0755"
-    remote_src: yes
-  when: installation_required
+    - name: Copy cmgr binary to install location
+      ansible.builtin.copy:
+        src: "{{ download_dir.path }}/cmgr"
+        dest: "{{ install_location }}/cmgr"
+        mode: "0755"
+        remote_src: yes
 
-- name: Download example challenges
-  ansible.builtin.get_url:
-    dest: "{{ download_dir.path }}"
-    url: "{{ cmgr_github_url }}/releases/download/{{ latest_version_response.url.split('/tag/')[1] if version == 'latest' else version }}/{{ cmgr_examples_filename }}"
-    mode: "0644"
-  when: installation_required and download_example_challenges
+    - name: Copy cmgrd binary to install location
+      ansible.builtin.copy:
+        src: "{{ download_dir.path }}/cmgrd"
+        dest: "{{ install_location }}/cmgrd"
+        mode: "0755"
+        remote_src: yes
 
-- name: Ensure example challenge directory is removed
-  ansible.builtin.file:
-    path: "{{ example_challenge_dir }}"
-    state: absent
-  when: installation_required and download_example_challenges
+    - name: Download example challenges
+      ansible.builtin.get_url:
+        dest: "{{ download_dir.path }}"
+        url: "{{ cmgr_github_url }}/releases/download/{{ latest_version_response.url.split('/tag/')[1] if version == 'latest' else version }}/{{ cmgr_examples_filename }}"
+        mode: "0644"
+      when: download_example_challenges
 
-- name: Ensure example challenge directory exists
-  ansible.builtin.file:
-    path: "{{ example_challenge_dir }}"
-    state: directory
-    mode: "0755"
-  when: installation_required and download_example_challenges
+    - name: Ensure example challenge directory is removed
+      ansible.builtin.file:
+        path: "{{ example_challenge_dir }}"
+        state: absent
+      when: download_example_challenges
 
-- name: Unpack example challenges
-  ansible.builtin.unarchive:
-    dest: "{{ example_challenge_dir }}"
-    remote_src: yes
-    src: "{{ download_dir.path }}/{{ cmgr_examples_filename }}"
-    extra_opts: ["--strip", "1"]
-  when: installation_required and download_example_challenges
+    - name: Ensure example challenge directory exists
+      ansible.builtin.file:
+        path: "{{ example_challenge_dir }}"
+        state: directory
+        mode: "0755"
+      when: download_example_challenges
 
-- name: Remove temporary directory
-  ansible.builtin.file:
-    path: "{{ download_dir.path }}"
-    state: absent
-  when: installation_required
+    - name: Unpack example challenges
+      ansible.builtin.unarchive:
+        dest: "{{ example_challenge_dir }}"
+        remote_src: yes
+        src: "{{ download_dir.path }}/{{ cmgr_examples_filename }}"
+        extra_opts: ["--strip", "1"]
+      when: download_example_challenges
+
+    - name: Remove temporary directory
+      ansible.builtin.file:
+        path: "{{ download_dir.path }}"
+        state: absent
 
 # Runs between the binary landing at .../cmgr and the wrapper below overwriting
 # that path, so the source here is the real binary, not the wrapper. The download
