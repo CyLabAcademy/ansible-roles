@@ -66,35 +66,41 @@
   ansible.builtin.set_fact:
     zot_installation_required: "{{ (not zot_binary.stat.exists) or (not zot_marker.stat.exists) or ((zot_marker_content.content | b64decode | trim) != zot_download_url) }}"
 
-- name: Create temporary directory for download
-  ansible.builtin.tempfile:
-    state: directory
-  register: zot_download_dir
-  when: zot_installation_required
+# tempfile does not run under --check, so neither can anything that downloads into it.
+- name: Report the zot release that would be installed
+  ansible.builtin.debug:
+    msg: "Would install zot {{ zot_version }}"
+  changed_when: true
+  when: zot_installation_required | bool and ansible_check_mode
 
-- name: Download zot binary
-  ansible.builtin.get_url:
-    dest: "{{ zot_download_dir.path }}"
-    url: "{{ zot_download_url }}"
-    checksum: "{{ zot_checksum if zot_checksum | length > 0 else zot_checksums[zot_version][zot_arch] }}"
-    mode: "0644"
-  when: zot_installation_required
+- name: Install zot
+  when: zot_installation_required | bool and not ansible_check_mode
+  block:
+    - name: Create temporary directory for download
+      ansible.builtin.tempfile:
+        state: directory
+      register: zot_download_dir
 
-- name: Copy zot binary to install location
-  ansible.builtin.copy:
-    src: "{{ zot_download_dir.path }}/{{ zot_binary_filename }}"
-    dest: "{{ zot_install_path }}"
-    mode: "0755"
-    remote_src: yes
-  when: zot_installation_required
-  notify:
-    - Restart zot
+    - name: Download zot binary
+      ansible.builtin.get_url:
+        dest: "{{ zot_download_dir.path }}"
+        url: "{{ zot_download_url }}"
+        checksum: "{{ zot_checksum if zot_checksum | length > 0 else zot_checksums[zot_version][zot_arch] }}"
+        mode: "0644"
 
-- name: Remove temporary directory
-  ansible.builtin.file:
-    path: "{{ zot_download_dir.path }}"
-    state: absent
-  when: zot_installation_required
+    - name: Copy zot binary to install location
+      ansible.builtin.copy:
+        src: "{{ zot_download_dir.path }}/{{ zot_binary_filename }}"
+        dest: "{{ zot_install_path }}"
+        mode: "0755"
+        remote_src: yes
+      notify:
+        - Restart zot
+
+    - name: Remove temporary directory
+      ansible.builtin.file:
+        path: "{{ zot_download_dir.path }}"
+        state: absent
 
 # Written only after the binary is in place, so a failed copy leaves the old marker
 # and the next run retries.
