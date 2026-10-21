@@ -26,6 +26,7 @@
       register: challenge_proxy_image_inspect
       changed_when: false
       failed_when: false
+      check_mode: false
 
     # Here rather than in the unit, so a registry that cannot be reached fails the play
     # instead of leaving the unit restarting with no proxy.
@@ -58,16 +59,19 @@
         src: challenge_proxy.service.j2
         dest: "{{ systemd_unit_dir }}/{{ challenge_proxy_service }}"
         mode: "0644"
+      register: challenge_proxy_unit
       notify:
         - Reload systemd config
         - Restart challenge proxy
 
+    # Under --check a unit the template would write is not there for systemd to look up.
     - name: Ensure the challenge proxy is enabled and started
       ansible.builtin.systemd:
         name: "{{ challenge_proxy_service }}"
         enabled: yes
         state: started
         daemon_reload: yes
+      when: not (ansible_check_mode and challenge_proxy_unit is changed)
 
     - name: Ensure the challenge proxy update script is present
       ansible.builtin.template:
@@ -90,6 +94,7 @@
         enabled: yes
         state: "{{ 'restarted' if challenge_proxy_update_units is changed else 'started' }}"
         daemon_reload: yes
+      when: not (ansible_check_mode and challenge_proxy_update_units is changed)
 
 # Turning it off removes it, rather than leaving a public listener nobody configured.
 - name: Remove the challenge proxy
