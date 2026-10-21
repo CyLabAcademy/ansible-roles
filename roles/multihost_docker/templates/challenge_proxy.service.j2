@@ -30,4 +30,6 @@ Restart=always
 RestartSec=2
 
 [Install]
-WantedBy=multi-user.target
+# Requires= carries Docker's stops and restarts over to the proxy, but not a later start;
+# wanting it from docker.service brings it back whenever Docker starts.
+WantedBy=multi-user.target docker.service
