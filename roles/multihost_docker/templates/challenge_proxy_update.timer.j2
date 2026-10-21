@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=Daily check for a newer challenge proxy image
+
+[Timer]
+OnCalendar={{ challenge_proxy_update_schedule }}
+# Spreads the fleet's restarts out; Persistent catches up a run missed while powered off.
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

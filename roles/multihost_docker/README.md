@@ -33,6 +33,50 @@ load.
 [docker-reaper](https://github.com/CyLabAcademy/docker-reaper) is installed and enabled as a
 systemd service + timer.
 
+## Challenge proxy
+
+nginx, in a container on the host network, answers `http://<port>.<host>/` from challenge port
+`<port>` on this worker, for players whose network allows only web ports. It accepts any
+hostname suffix, so it holds nothing per-host and works from a baked image; a wildcard DNS
+record (`*.<worker>`) pointing at the worker is what makes those names resolve, and port 80
+must be open to it.
+
+Headers pass through as sent, in both directions, since many web challenges are about headers.
+None are added to requests. The exceptions are the hop-by-hop request headers nginx manages
+itself: `Connection` and `Upgrade` are set for the connection to the challenge, and `Keep-Alive`,
+`TE` and `Expect` are dropped. Responses keep the challenge's own `Server`, `Date` and
+`X-Accel-*` headers, which nginx would otherwise hide or act on. They gain one header,
+`X-Robots-Tag: noindex, nofollow`, which keeps challenges out of search results; a `robots.txt`
+would have hidden the challenge's own, which some challenges are about. Headers up to 32 KB fit
+either way. The challenge sees the connection come from the worker's own address, not the
+player's.
+
+A few challenges cannot work through any proxy and stay on their direct port: request smuggling
+and raw HTTP, and path traversal in the URL path itself, which nginx rejects with 400 first.
+
+The image is a moving tag. A daily timer pulls it and restarts the proxy when the tag has moved,
+the container counterpart of unattended upgrades; a proxy someone stopped is left stopped.
+
+Requests are logged twice. The full log (client, host, request line, status) stays in the
+container's log, `docker logs challenge-proxy`. Compact JSON lines (time, client, port, method,
+status, bytes, seconds, but no path, query or headers) go to
+`/var/log/challenge-proxy/access.log` for a log shipper such as the CloudWatch agent. That one is
+sampled so a flood cannot flood what is shipped: after a burst of 10, a client gets about one
+line a second per port, however fast it sends. It shows who reached which port and when, not how
+many times. A timer checks it hourly, rotating it daily or at 100 MB and keeping seven rotations:
+a week of history normally, but as little as seven hours under a sustained flood. Requests
+to the catch-all server, mostly scanners, appear only in the container's log.
+
+Against abuse, the proxy relies on resource limits rather than rate limits, since hammering a
+challenge is often how it is solved:
+- **Container ceilings:** its memory, CPU and process count are capped within the container
+  slice, so a flood takes down the proxy, which systemd restarts, and not the challenges sharing
+  that slice.
+- **Timeouts:** client timeouts are shorter than nginx's defaults, and timed-out connections are
+  reset.
+- **Connection cap:** each client address may hold a generous number of connections. Over the
+  cap, it gets a 429.
+
 ## Usage
 
 ```yaml
@@ -599,6 +643,19 @@ fstab line by hand if you actually want it gone.
 | `docker_reaper_images_stale_after` | With `docker_reaper_images_lru`, appended to the image sweep as `--stale-after`: an image unused this long goes by age alone, whatever its size. Without it, `--max-size` would keep a large image nothing uses any more, such as a replaced build, until nothing smaller is left. An empty string disables it. | `168h` |
 | `docker_reaper_interval_secs` | How frequently (in seconds) to run `docker-reaper`. | `60` |
 
+### Challenge proxy settings
+
+| Name | Description | Default |
+| --- | --- | --- |
+| `challenge_proxy_enabled` | Whether to run the challenge proxy. `no` stops and removes it. | `yes` |
+| `challenge_proxy_image` | The nginx image. A tag, which the update timer follows; a digest makes the timer a no-op. | `nginx:stable-alpine-slim` |
+| `challenge_proxy_update_schedule` | `OnCalendar` for the update check. Each worker adds up to an hour of random delay. | `*-*-* 23:30:00 UTC` |
+| `challenge_proxy_port_regex` | Ports the proxy forwards to. Must cover cork's `CORK_PORTS`; five digits keeps everything below 10000 (sshd, the Docker API, cork-telemetry) out of reach. | `[1-4]\d{4}` |
+| `challenge_proxy_expected_ports` | cork's port range (`low-high`). When set, the play fails unless `challenge_proxy_port_regex` covers it. | `null` |
+| `challenge_proxy_connections_per_client` | Connections one client address may hold at once; past it, a 429. Generous, since a whole school can share one address. | `300` |
+| `challenge_proxy_memory` | The proxy container's memory ceiling, swap included. Over it, the proxy is killed and systemd restarts it. | `512m` |
+| `challenge_proxy_cpus` | The proxy container's CPU ceiling, in CPUs. nginx runs one worker per CPU of it, rounded up, rather than one per host CPU. | `0.5` |
+
 ## Baking a worker image
 
 An autoscaled worker cannot be provisioned by this role: it has to boot ready,
@@ -637,12 +694,16 @@ filesystem nothing is writing to:
 ```sh
 ROOT=$(docker info --format '{{.DockerRootDir}}')   # NOT storage_mount_point, see below
 : "${ROOT:?docker info failed - do this before stopping the daemon}"
+# Stopped, not disabled, so clones start them. Running, the proxy's unit recreates its
+# container within seconds of the rm below.
+sudo systemctl stop challenge-proxy-update.timer challenge-proxy-logrotate.timer challenge-proxy
 docker ps -aq | xargs -r docker rm -fv              # -v, or their anonymous volumes stay
 docker volume prune -af                             # -a, or named volumes stay
 docker network prune -f
 sudo systemctl stop docker docker.socket
 sudo rm -f "$ROOT/engine-id"                        # else every clone reports one daemon ID
 sudo rm -f "$ROOT/network/files/local-kv.db"        # libnetwork's IPAM allocations
+sudo rm -f /var/log/challenge-proxy/* /var/lib/logrotate/challenge-proxy.status  # the base's own traffic
 ```
 
 Take the root from `docker info` rather than assuming `/mnt/docker-data`: with

@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=Rotate the challenge proxy's shipped log
+
+[Service]
+Type=oneshot
+# Its own state file, apart from the system's daily run.
+ExecStart=/usr/sbin/logrotate --state /var/lib/logrotate/challenge-proxy.status {{ challenge_proxy_conf_dir }}/logrotate.conf

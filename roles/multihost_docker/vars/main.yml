@@ -16,6 +16,18 @@ worker_telemetry_port: 2136
 cork_telemetry_install_path: "/usr/local/bin"
 cork_telemetry_binary_filename: "telemetry"
 
+challenge_proxy_service: "challenge-proxy.service"
+challenge_proxy_update_unit: "challenge-proxy-update"
+challenge_proxy_update_script: "/usr/local/bin/challenge-proxy-update"
+challenge_proxy_container: "challenge-proxy"
+# Mounted whole, at the same path: a file bind mount would keep the inode a replaced
+# config no longer has.
+challenge_proxy_conf_dir: "/etc/challenge-proxy"
+# The compact access log, which the CloudWatch agent can ship.
+challenge_proxy_log_dir: "/var/log/challenge-proxy"
+# Hourly, so a size cap bounds the disk a flood can take between daily rotations.
+challenge_proxy_logrotate_unit: "challenge-proxy-logrotate"
+
 systemd_unit_dir: "/etc/systemd/system/"
 systemd_docker_drop_in_dir: "/etc/systemd/system/docker.service.d"
 systemd_ufw_drop_in_dir: "/etc/systemd/system/ufw.service.d"

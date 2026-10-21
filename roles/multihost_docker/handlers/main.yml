@@ -38,3 +38,20 @@
     name: telemetry.service
     state: restarted
   become: yes
+
+# Neither runs under --check, where the unit may be one the play has not written yet; the
+# task that notified them already reports the change.
+- name: Restart challenge proxy
+  ansible.builtin.systemd:
+    name: "{{ challenge_proxy_service }}"
+    state: restarted
+  become: yes
+  when: not ansible_check_mode
+
+# Starts the unit if it is not running, so a config change cannot fail on a stopped proxy.
+- name: Reload challenge proxy
+  ansible.builtin.systemd:
+    name: "{{ challenge_proxy_service }}"
+    state: reloaded
+  become: yes
+  when: not ansible_check_mode

@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+
+# Run hourly by {{ challenge_proxy_logrotate_unit }}.timer rather than by the daily system
+# run, so maxsize bounds the disk a flood can take before the day is out.
+#
+# copytruncate rather than signalling a reopen: nginx's workers would reopen as nobody, and
+# its stdout log cannot be reopened at all. It writes with O_APPEND, so a truncated file just
+# starts again from the top.
+{{ challenge_proxy_log_dir }}/access.log {
+    daily
+    maxsize 100M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
