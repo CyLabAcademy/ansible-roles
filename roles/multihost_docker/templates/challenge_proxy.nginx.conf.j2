@@ -23,6 +23,10 @@ http {
 
     # The Host names the port, which is what ties a request to an instance.
     log_format proxy '$remote_addr [$time_local] "$host" "$request" $status $body_bytes_sent $request_time';
+    # For shipping off the box: who reached which port, when, and how it went. No path,
+    # query or headers, which carry the bulk and the players' payloads.
+    log_format shipped escape=json '{"time":"$time_iso8601","client":"$remote_addr","port":"$port","method":"$request_method","status":$status,"bytes":$body_bytes_sent,"seconds":$request_time}';
+    # The catch-all server inherits only this one, so scanners stay off the shipped log.
     access_log /dev/stdout proxy;
 
     map $http_upgrade $connection_upgrade {
@@ -38,9 +42,11 @@ http {
     server {
         listen 80;
         server_name "~^(?<port>{{ challenge_proxy_port_regex }})\.";
+        access_log /dev/stdout proxy;
+        access_log {{ challenge_proxy_log_dir }}/access.log shipped;
 
-        # Challenges are the client's to probe: pass every header through as sent, add
-        # none, and accept any body size.
+        # Challenges are the client's to probe: pass every request header through as sent,
+        # add none, and accept any body size.
         underscores_in_headers on;
         ignore_invalid_headers off;
         client_max_body_size 0;

@@ -53,6 +53,13 @@ and raw HTTP, and path traversal in the URL path itself, which nginx rejects wit
 The image is a moving tag. A daily timer pulls it and restarts the proxy when the tag has moved,
 the container counterpart of unattended upgrades; a proxy someone stopped is left stopped.
 
+Requests are logged twice. The full log (client, host, request line, status) stays in the
+container's log, `docker logs challenge-proxy`. A compact JSON line per proxied request (time,
+client, port, method, status, bytes, seconds, but no path, query or headers) goes to
+`/var/log/challenge-proxy/access.log`, rotated daily with a week kept, for a log shipper such as
+the CloudWatch agent. Requests to the catch-all server, mostly scanners, appear only in the
+container's log.
+
 ## Usage
 
 ```yaml

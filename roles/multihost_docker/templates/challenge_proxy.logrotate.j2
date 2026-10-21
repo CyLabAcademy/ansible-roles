@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+
+# copytruncate rather than signalling a reopen: nginx's workers would reopen as nobody, and
+# its stdout log cannot be reopened at all. It writes with O_APPEND, so a truncated file just
+# starts again from the top.
+{{ challenge_proxy_log_dir }}/access.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

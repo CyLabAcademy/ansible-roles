@@ -41,6 +41,23 @@
         state: directory
         mode: "0755"
 
+    # Players' addresses, so not world-readable. nginx's master opens the log as root and
+    # its workers inherit it.
+    - name: Ensure the challenge proxy log directory exists
+      ansible.builtin.file:
+        path: "{{ challenge_proxy_log_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Ensure the challenge proxy log is rotated
+      ansible.builtin.template:
+        src: challenge_proxy.logrotate.j2
+        dest: /etc/logrotate.d/challenge-proxy
+        mode: "0644"
+
+    # nginx -t opens the log files too, so the log directory is mounted for it.
     - name: Ensure the challenge proxy config is present
       ansible.builtin.template:
         src: challenge_proxy.nginx.conf.j2
@@ -49,6 +66,7 @@
         validate: >-
           docker run --rm --network none --userns host
           --volume {{ challenge_proxy_conf_dir }}:{{ challenge_proxy_conf_dir }}:ro
+          --volume {{ challenge_proxy_log_dir }}:{{ challenge_proxy_log_dir }}
           --volume %s:/etc/nginx/candidate.conf:ro
           --entrypoint /usr/sbin/nginx {{ challenge_proxy_image }} -t -c /etc/nginx/candidate.conf
       notify:
@@ -111,6 +129,7 @@
       # Absent on a host that never ran it.
       failed_when: false
 
+    # The log directory stays: it is a record of what the proxy served.
     - name: Ensure the challenge proxy units, script and config are absent
       ansible.builtin.file:
         path: "{{ item }}"
@@ -121,5 +140,6 @@
         - "{{ systemd_unit_dir }}/{{ challenge_proxy_service }}"
         - "{{ challenge_proxy_update_script }}"
         - "{{ challenge_proxy_conf_dir }}"
+        - /etc/logrotate.d/challenge-proxy
       notify:
         - Reload systemd config
