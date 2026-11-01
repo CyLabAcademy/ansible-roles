@@ -1,0 +1,43 @@
+---
+
+# Configure outputs and install local rules. Nothing here edits a file the
+# package owns: falco.yaml and falco_rules.yaml stay as shipped, and everything
+# local goes in the two directories Falco reads after them.
+
+- name: Ensure Falco log directory exists
+  ansible.builtin.file:
+    path: "{{ falco_log_dir }}"
+    state: directory
+    owner: root
+    group: adm
+    mode: '0750'
+
+- name: Ensure Falco configuration is in place
+  ansible.builtin.template:
+    src: falco_config.yaml.j2
+    dest: "{{ falco_config_path }}"
+    lstrip_blocks: yes
+    mode: '0644'
+  notify:
+    - Restart Falco
+
+# Validated against the stable ruleset, which is loaded first, because local
+# rules reference its macros and override its rules -- on their own they do not
+# load. A rules file that fails here never reaches the directory, and Falco
+# never sees it: with watch_config_files on, which the package enables, a broken
+# file in rules.d would take the running Falco down on its own.
+- name: Ensure local rules are installed
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ falco_rules_dir }}/{{ item | basename }}"
+    mode: '0644'
+    validate: /usr/bin/falco -V /etc/falco/falco_rules.yaml -V %s
+  loop: "{{ falco_rules_src }}"
+  notify:
+    - Restart Falco
+
+- name: Ensure Falco logs are rotated
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: "{{ falco_logrotate_path }}"
+    mode: '0644'

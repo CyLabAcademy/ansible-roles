@@ -1,0 +1,31 @@
+---
+falco_repository_url: "https://download.falco.org/packages/deb"
+falco_repository_key_url: "https://falco.org/repo/falcosecurity-packages.asc"
+falco_repository_key_path: /etc/apt/keyrings/falcosecurity.asc
+
+# The repository publishes per architecture under the same suite, so the
+# sources entry names the host's.
+falco_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+falco_arch: "{{ falco_arch_map[ansible_facts['architecture']] | default('') }}"
+
+# The modern eBPF unit. Its probe is CO-RE and compiled into the falco binary,
+# so it needs neither kernel headers nor DKMS nor a driver download -- only a
+# kernel with BTF, which every release this role supports has.
+falco_service: falco-modern-bpf.service
+
+# The units the package ships that this role does not run. The kmod variants
+# would load a second driver; falcoctl-artifact-follow would replace the rules
+# from the internet on its own schedule, which is exactly what pinning
+# falco_version is meant to prevent.
+falco_unused_services:
+  - falco-kmod.service
+  - falco-kmod-inject.service
+  - falco-custom.service
+  - falcoctl-artifact-follow.service
+
+falco_config_path: /etc/falco/config.d/zz-ansible.yaml
+falco_rules_dir: /etc/falco/rules.d
+falco_log_dir: "{{ falco_log_path | dirname }}"
+falco_logrotate_path: /etc/logrotate.d/falco

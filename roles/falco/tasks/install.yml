@@ -1,0 +1,81 @@
+---
+
+# Install Falco from the falcosecurity apt repository, pinned and held.
+
+- name: Assert this architecture has a Falco build
+  ansible.builtin.assert:
+    that:
+      - falco_arch | length > 0
+    fail_msg: >-
+      The falcosecurity repository publishes per architecture and this role knows none for
+      '{{ ansible_facts['architecture'] | default('unknown -- this play gathered no facts') }}'
+      (known: {{ falco_arch_map.keys() | join(', ') }}).
+
+- name: Ensure repository dependencies are installed
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      # deb822_repository reads and writes the .sources file through
+      # debian.deb822. Missing, the module hunts for an interpreter that has it
+      # and then apt-installs this itself, mid-task.
+      - python3-debian
+    state: present
+    update_cache: yes
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Ensure falcosecurity repository GPG key is present
+  ansible.builtin.get_url:
+    url: "{{ falco_repository_key_url }}"
+    dest: "{{ falco_repository_key_path }}"
+    mode: '0644'
+
+- name: Ensure falcosecurity repository is added
+  ansible.builtin.deb822_repository:
+    name: falcosecurity
+    types: ["deb"]
+    uris: "{{ falco_repository_url }}"
+    suites: ["stable"]
+    components: ["main"]
+    architectures: ["{{ falco_arch }}"]
+    signed_by: "{{ falco_repository_key_path }}"
+    state: present
+
+- name: Gather installed package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+# apt refuses to move a held package to another version, so a changed pin needs
+# the hold lifted first. It goes straight back on below.
+- name: Ensure Falco is unheld before changing its version
+  ansible.builtin.dpkg_selections:
+    name: falco
+    selection: install
+  when: "'falco' in ansible_facts.packages"
+
+# The package's postinst does the driver setup, and these three answers make it
+# do so without a dialog: choose modern eBPF, enable and start its unit, and mask
+# falcoctl-artifact-follow rather than let it pull rules updates on its own.
+# It stops every Falco unit first, on every install and upgrade.
+- name: Ensure Falco is installed at the pinned version
+  ansible.builtin.apt:
+    name: "falco={{ falco_version }}"
+    state: present
+    allow_downgrade: yes
+    update_cache: yes
+  environment:
+    FALCO_FRONTEND: noninteractive
+    FALCO_DRIVER_CHOICE: modern_ebpf
+    FALCOCTL_ENABLED: "no"
+  register: falco_package
+  notify:
+    - Restart Falco
+
+- name: Hold Falco at the pinned version
+  ansible.builtin.dpkg_selections:
+    name: falco
+    selection: hold

@@ -1,0 +1,8 @@
+---
+# A restart even though Falco reloads itself when a watched file changes: the
+# restart is what the active check in main.yml then proves starts cleanly.
+- name: Restart Falco
+  ansible.builtin.service:
+    name: "{{ falco_service }}"
+    state: restarted
+  become: yes

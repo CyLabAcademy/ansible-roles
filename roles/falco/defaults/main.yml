@@ -1,0 +1,34 @@
+---
+# The Falco release to install, as the falcosecurity apt repository spells it.
+# Pinned and held: this is the thing that decides what is detected, so a new
+# release arrives as a reviewed edit here and not as a side effect of an
+# unrelated `apt upgrade` (the os role's upgrade_packages included).
+falco_version: "0.45.2"
+
+# Rules files to install alongside the stable ruleset the package ships, as
+# paths on the controller. Each lands in /etc/falco/rules.d/ under its own
+# basename. Falco loads that directory after falco_rules.yaml, so these can
+# reference the stable macros and lists and override its rules by name.
+falco_rules_src: []
+
+# The lowest rule priority written out. NOTICE keeps the stable ruleset's
+# INFORMATIONAL and DEBUG rules -- which describe ordinary activity on any
+# host -- out of the shipped log.
+falco_priority: notice
+
+# One JSON object per alert. This is the file the CloudWatch agent ships; the
+# path has to match its collect_list entry.
+falco_log_path: /var/log/falco/events.json
+
+# Falco's internal metrics, one JSON snapshot per interval, written to a file
+# of their own because they are not alerts and do not pass the priority
+# filter. They carry the syscall drop counters, which is the one way to see
+# that Falco was blinded: its drop *alert* only fires at priority debug.
+# Doubles as a heartbeat -- a host whose snapshots stop has lost its Falco.
+# Empty string disables them.
+falco_metrics_path: /var/log/falco/metrics.json
+falco_metrics_interval: 15m
+
+# Local copies kept by logrotate. The shipped copy is the durable one; these
+# only need to outlast the gap between an incident and a snapshot of the disk.
+falco_log_rotate_days: 7
