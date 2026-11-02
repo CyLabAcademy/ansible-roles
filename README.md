@@ -33,6 +33,7 @@ though they may be portable to other platforms with minor changes.
 | [zot](./roles/zot/README.md)                           | Installs the zot OCI registry that holds challenge images.                  |
 | [actions_runner](./roles/actions_runner/README.md)     | Installs the self-hosted GitHub Actions runner.                             |
 | [cloudwatch_agent](./roles/cloudwatch_agent/README.md) | Installs and configures the AWS CloudWatch Agent.                           |
+| [falco](./roles/falco/README.md)                       | Installs Falco to record suspicious runtime activity, without acting on it. |
 
 ## Quick Start
 

@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+#
+# Rotation by rename. Falco opens the alert file per write (file_output.keep_alive
+# false), so the next alert simply creates a new one, and the CloudWatch agent
+# follows the rename. The metrics file has no keep_alive setting and Falco does
+# not document whether it is reopened, hence copytruncate for it alone: with one
+# snapshot per interval, a line lost between copy and truncate is a non-issue,
+# and the agent has shipped it already.
+
+{{ falco_log_path }} {
+    daily
+    rotate {{ falco_log_rotate_days }}
+    compress
+    delaycompress
+    missingok
+    notifempty
+}
+{% if falco_metrics_path %}
+
+{{ falco_metrics_path }} {
+    daily
+    rotate {{ falco_log_rotate_days }}
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+{% endif %}

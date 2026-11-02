@@ -1,0 +1,18 @@
+galaxy_info:
+  author: CyLab Security Academy team
+  description: Installs Falco to detect and log suspicious runtime activity, without acting on it
+  company: Carnegie Mellon University
+
+  license: MIT
+
+  min_ansible_version: "4"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+
+  galaxy_tags: ["picoctf", "falco", "security", "monitoring"]
+
+dependencies: []

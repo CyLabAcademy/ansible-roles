@@ -1,0 +1,28 @@
+---
+
+- ansible.builtin.include_tasks: install.yml
+  args:
+    apply:
+      become: yes
+
+- ansible.builtin.include_tasks: configure.yml
+  args:
+    apply:
+      become: yes
+
+- ansible.builtin.include_tasks: service.yml
+  args:
+    apply:
+      become: yes
+
+- ansible.builtin.meta: flush_handlers
+
+- name: Ensure Falco is active
+  ansible.builtin.service:
+    name: "{{ falco_service }}"
+    state: started
+  become: yes
+  register: falco_service_state
+  until: falco_service_state.status.ActiveState == "active"
+  retries: 5
+  delay: 5

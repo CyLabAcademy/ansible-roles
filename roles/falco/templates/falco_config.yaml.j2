@@ -1,0 +1,62 @@
+# {{ ansible_managed }}
+#
+# Merged over /etc/falco/falco.yaml, which stays as the package shipped it so
+# that an upgrade never stops on a conffile prompt. Named to sort last in
+# config.d: files there load in lexicographic order and the last scalar wins.
+#
+# Under the default `append` merge strategy a list here would be appended to
+# the package's rather than replace it, so this file sets no lists.
+# syscall_event_drops.actions and rules_files stay as shipped for that reason.
+
+priority: {{ falco_priority }}
+
+# Detect and record, nothing else. Every output that leaves the host or acts
+# on what it sees is off; the file below is the only sink.
+json_output: true
+json_include_output_property: true
+json_include_output_fields_property: true
+json_include_tags_property: true
+buffered_outputs: false
+
+# Opened per alert (keep_alive false), so logrotate can rotate by rename with
+# no copytruncate and no signal to Falco.
+file_output:
+  enabled: true
+  keep_alive: false
+  filename: {{ falco_log_path }}
+
+# Off, not merely unread. The unit sends stdout to /dev/null today, but the
+# syslog output and Falco's own log_syslog both write into the journal and so
+# into /var/log/syslog, where alerts would be buried among the kernel's lines
+# and shipped a second time.
+stdout_output:
+  enabled: false
+syslog_output:
+  enabled: false
+log_syslog: false
+log_stderr: true
+http_output:
+  enabled: false
+# Stated with an empty program because the schema requires one, and a config
+# file that fails validation is reported as such at every start.
+program_output:
+  enabled: false
+  program: ""
+
+# Listens on 0.0.0.0:8765 by default, for a Kubernetes health probe nothing
+# here uses.
+webserver:
+  enabled: false
+
+metrics:
+{% if falco_metrics_path %}
+  enabled: true
+  interval: {{ falco_metrics_interval }}
+  # To the file only. As a rule it would arrive at priority INFORMATIONAL and
+  # be filtered out by the priority above.
+  output_rule: false
+  output_file: {{ falco_metrics_path }}
+  kernel_event_counters_enabled: true
+{% else %}
+  enabled: false
+{% endif %}

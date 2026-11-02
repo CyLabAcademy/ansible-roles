@@ -1,0 +1,22 @@
+---
+
+# The package's postinst enables and starts the unit, but only on the install
+# itself; this keeps it so on a run that installs nothing.
+
+# Masked rather than only disabled. The modern eBPF unit Wants=
+# falcoctl-artifact-follow, so a merely disabled follower is started anyway
+# alongside Falco, and with it the automatic rules updates the pin exists to
+# keep out.
+- name: Ensure unused Falco units are stopped and masked
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+    masked: yes
+  loop: "{{ falco_unused_services }}"
+
+- name: Ensure Falco is enabled
+  ansible.builtin.systemd:
+    name: "{{ falco_service }}"
+    enabled: yes
+    daemon_reload: yes
